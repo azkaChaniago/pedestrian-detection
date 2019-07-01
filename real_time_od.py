@@ -5,6 +5,7 @@ import argparse
 import imutils
 import time
 import cv2
+import sys
 from pyimagesearch.centroidtracker import CentroidTracker
 # from skimage import measure
 
@@ -46,6 +47,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-p", "--prototxt", required=True, help="path to Caffe 'deploy' prototxt file")
 ap.add_argument("-m", "--model", required=True, help="path to Caffe pre-train model")
 ap.add_argument("-c", "--confidence", type=float, default=0.2, help="minimum probability to filter weak detections")
+ap.add_argument("-r", "--realtimecamera", help="real time camera ")
+ap.add_argument("-v", "--video", help="path to inputed video")
 args = vars(ap.parse_args())
 
 # initialize the list of class labels MobileNet SSD was trained to
@@ -66,8 +69,14 @@ net = cv2.dnn.readNetFromCaffe(args["prototxt"], args['model'])
 # initialize the video stream, allow the cammera sensor to warmup,
 # and initialize the FPS counter
 print("[INFO] starting video stream")
-# vs = VideoStream(src=0).start()
-vs = FileVideoStream('pedestrians_crossing.mp4').start()
+if args['realtimecamera'] or args['video']:
+	if (args['realtimecamera']):
+		vs = VideoStream(src=0).start()
+	elif (args['video']):
+		vs = FileVideoStream('pedestrians_crossing.mp4').start()
+else:
+	print('Need video or cam open')
+	sys.exit()
 time.sleep(2.0)
 fps = FPS().start()
 # loop over the frames from the video stream
@@ -115,7 +124,7 @@ while True:
 					mid_x = (startX+endX)/2
 					mid_y = (startY+endY)/2
 					apx_distance = round(((100 - (endX - startX))), 1)
-					cv2.putText(frame, '{}'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+					cv2.putText(frame, '{}m'.format(apx_distance/10), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
 					person_distance.append(apx_distance)
 
 			if len(person_list) == 0:
