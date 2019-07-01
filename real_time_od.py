@@ -30,6 +30,13 @@ def distance_to_camera(knownWidth, focalLength, perWidth):
 	# compute and return the distance from the maker to the camera
 	return (knownWidth * focalLength) / perWidth
 
+# initialize the known distance from the camera to the object, which
+# in this case is 24 inches
+KNOWN_DISTANCE = 100.0
+
+# initialize the known object width, which in this case, the piece of
+# paper is 12 inches wide
+KNOWN_WIDTH = 11.0
 
 """
 	Detect Objects
@@ -80,6 +87,7 @@ while True:
 	detections = net.forward()
 	rects = []
 	person_list = []
+	person_distance = []
 	ids = []
     # loop over the detections
 	for i in np.arange(0, detections.shape[2]):
@@ -97,19 +105,24 @@ while True:
 			idx = int(detections[0, 0, i, 1])
 			box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
 			(startX, startY, endX, endY) = box.astype("int")
- 
 			# draw the prediction on the frame
 			label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
 			if CLASSES[idx] == "person":
 				rects.append(box.astype("int"))
 				person = "{}".format(CLASSES[idx])
 				person_list.append(person)
-			person_sum = len(person_list)
-			if person_sum == 0:
+				if confidence >= 0.5:
+					mid_x = (startX+endX)/2
+					mid_y = (startY+endY)/2
+					apx_distance = round(((100 - (endX - startX))), 1)
+					cv2.putText(frame, '{}'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+					person_distance.append(apx_distance)
+
+			if len(person_list) == 0:
 				counted_person ="{}:".format("person")
 				# cv2.putText(frame, counted_person, (10, h), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2) 
 			else:
-				counted_person ="{}: {}".format("person", person_sum)
+				counted_person ="{}: {}".format("person", len(person_list))
 				# cv2.putText(frame, counted_person, (10, h), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2) 
 				cv2.rectangle(frame, (startX, startY), (endX, endY), COLORS[idx], 2)
 				y = startY - 15 if startY - 15 > 15 else startY + 15
@@ -117,6 +130,7 @@ while True:
 			
 	# update our centroid tracker using the computed set of bounding
 	# box rectangles
+	print(person_distance)
 	objects = ct.update(rects)
 	# loop over the tracked objects
 	for (objectID, centroid) in objects.items():
@@ -127,9 +141,7 @@ while True:
 		# cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 	status = "person: {}".format(len(ids))
 	cv2.putText(frame, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-	print(ids)
 	ids = []
-	print(ids)
 	# show the output frame
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
