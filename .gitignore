@@ -1,8 +1,16 @@
+<<<<<<< HEAD
 MobileNet-SSD/
 images/
 
 input.mp4
 pedestrian_crossing.mp4
+=======
+images/
+MobileNet-SSD/
+
+input.mp4
+pedestrians_crossing.mp4
+>>>>>>> 31fd5e29c6c2409d30d0de03eacd2e6cae195554
 protobuf-python-3.7.1.zip
 rectangle.py
 vehicle_distance_detection.py

@@ -5,8 +5,7 @@ import argparse
 import imutils
 import time
 import cv2
-from pyimagesearch.centroidtracker import CentroidTracker
-# from skimage import measure
+import sys
 
 """ 
 	Finding distance
@@ -31,13 +30,11 @@ def distance_to_camera(knownWidth, focalLength, perWidth):
 	return (knownWidth * focalLength) / perWidth
 
 # initialize the known distance from the camera to the object, which
-# in this case is 24 inches
-KNOWN_DISTANCE = 100.0
-
-# initialize the known object width, which in this case, the piece of
-# paper is 12 inches wide
-KNOWN_WIDTH = 11.0
-
+# in this case is 10 meters
+DEFAULT_DISTANCE = 100.0
+DEFAULT_OBJECT_WIDTH = 40.0
+pxl_width = []
+apx_distance = None
 """
 	Detect Objects
 """
@@ -46,6 +43,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-p", "--prototxt", required=True, help="path to Caffe 'deploy' prototxt file")
 ap.add_argument("-m", "--model", required=True, help="path to Caffe pre-train model")
 ap.add_argument("-c", "--confidence", type=float, default=0.2, help="minimum probability to filter weak detections")
+ap.add_argument("-r", "--realtimecamera", help="real time camera ")
+ap.add_argument("-v", "--video", help="path to inputed video")
 args = vars(ap.parse_args())
 
 # initialize the list of class labels MobileNet SSD was trained to
@@ -56,9 +55,6 @@ CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 	"sofa", "train", "tvmonitor"]
 COLORS = np.random.uniform(0, 255, size=(len(CLASSES),3))
 
-# initialize our centroid tracker and frame dimensions
-ct = CentroidTracker()
-
 # load serialized model
 print("[INFO] loading model .. ")
 net = cv2.dnn.readNetFromCaffe(args["prototxt"], args['model'])
@@ -66,16 +62,23 @@ net = cv2.dnn.readNetFromCaffe(args["prototxt"], args['model'])
 # initialize the video stream, allow the cammera sensor to warmup,
 # and initialize the FPS counter
 print("[INFO] starting video stream")
-# vs = VideoStream(src=0).start()
-vs = FileVideoStream('pedestrians_crossing.mp4').start()
-time.sleep(2.0)
+if args['realtimecamera'] or args['video']:
+	if (args['realtimecamera']):
+		vs = VideoStream(src=0).start()
+	elif (args['video']):
+		vs = FileVideoStream(args['video']).start()
+else:
+	print('Need video or cam open')
+	sys.exit()
+time.sleep(1.0)
 fps = FPS().start()
+
 # loop over the frames from the video stream
 while True:
 	# grab the frame from the threaded video stream and resize it
 	# to have a maximum width of 600 pixels
 	frame = vs.read()
-	frame = imutils.resize(frame, width=600)
+	frame = imutils.resize(frame, width=1200)
  
 	# grab the frame dimensions and convert it to a blob
 	(h, w) = frame.shape[:2]
@@ -87,8 +90,8 @@ while True:
 	detections = net.forward()
 	rects = []
 	person_list = []
-	person_distance = []
-	ids = []
+	# person_distance = []
+	
     # loop over the detections
 	for i in np.arange(0, detections.shape[2]):
 		# extract the confidence (i.e., probability) associated with
@@ -105,43 +108,56 @@ while True:
 			idx = int(detections[0, 0, i, 1])
 			box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
 			(startX, startY, endX, endY) = box.astype("int")
+			pxl_width.append((endX - startX))
+			# Focal Length for measuring object distance
+			# F = (P x D) / W
+			# F = Focal lenght; P = Object width in pixels; D = Default distance; W = Object real width
+			focalLength = (pxl_width[0] * DEFAULT_DISTANCE) / DEFAULT_OBJECT_WIDTH
+
 			# draw the prediction on the frame
 			label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
 			if CLASSES[idx] == "person":
 				rects.append(box.astype("int"))
 				person = "{}".format(CLASSES[idx])
 				person_list.append(person)
-				if confidence >= 0.5:
-					mid_x = (startX+endX)/2
-					mid_y = (startY+endY)/2
-					apx_distance = round(((100 - (endX - startX))), 1)
-					cv2.putText(frame, '{}'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
-					person_distance.append(apx_distance)
+				# if confidence >= 0.5:
+				mid_x = (startX+endX)/2
+				mid_y = (startY+endY)/2
 
+				# apx_distance = round(((100 - (endX - startX))), 2)
+				# cv2.putText(frame, '{}m'.format(apx_distance/10), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+				# apx_distance = round(((1 - ((endX - startX)/w))), 2)
+				# cv2.putText(frame, '{}m'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+				
+				# D' =(W x F) / P for measuring object distance
+				apx_distance = round((distance_to_camera(DEFAULT_OBJECT_WIDTH, focalLength, (endX - startX)) / 100), 2)
+				
+				if apx_distance is None or apx_distance >= 13:
+					color = (50, 255, 50)
+				elif apx_distance <= 3:
+					color = (50, 50, 255)
+				elif apx_distance <= 8:
+					color = (50, 255, 255)
+
+				cv2.putText(frame, '{}m'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+					
 			if len(person_list) == 0:
 				counted_person ="{}:".format("person")
-				# cv2.putText(frame, counted_person, (10, h), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2) 
 			else:
+				if apx_distance is None or apx_distance >= 13:
+					color = (50, 255, 50)
+				elif apx_distance <= 3:
+					color = (50, 50, 255)
+				elif apx_distance <= 8:
+					color = (50, 255, 255)
+				
 				counted_person ="{}: {}".format("person", len(person_list))
-				# cv2.putText(frame, counted_person, (10, h), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2) 
-				cv2.rectangle(frame, (startX, startY), (endX, endY), COLORS[idx], 2)
+				cv2.rectangle(frame, (startX, startY), (endX, endY), color, 2)
 				y = startY - 15 if startY - 15 > 15 else startY + 15
-				cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
+				cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 			
-	# update our centroid tracker using the computed set of bounding
-	# box rectangles
-	print(person_distance)
-	objects = ct.update(rects)
-	# loop over the tracked objects
-	for (objectID, centroid) in objects.items():
-		# draw both the ID of the object and the centroid of the
-		# object on the output frame
-		ids.append(objectID)
-		# cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-		# cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
-	status = "person: {}".format(len(ids))
+	status = "person: {}".format(len(person_list))
 	cv2.putText(frame, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-	ids = []
 	# show the output frame
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
