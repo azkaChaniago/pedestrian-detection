@@ -6,25 +6,10 @@ import imutils
 import time
 import cv2
 import sys
-
+from lane_detection import *
 """ 
 	Finding distance
 """
-def find_marker(image):
-	# convert the image to grayscale, blur it, and detect edges
-	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	gray = cv2.GaussianBlur(gray, (5, 5), 0)
-	edged = cv2.Canny(gray, 35, 125)
-
-	# find the contours in the edged image and keep the largest one;
-	# we'll assume that this is our piece of paper in the image
-	cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-	cnts = imutils.grab_contours(cnts)
-	c = max(cnts, key = cv2.contourArea)
-
-	# compute the bounding box of the of the paper region and return it
-	return cv2.minAreaRect(c)
-
 def distance_to_camera(knownWidth, focalLength, perWidth):
 	# compute and return the distance from the maker to the camera
 	return (knownWidth * focalLength) / perWidth
@@ -35,6 +20,7 @@ DEFAULT_DISTANCE = 100.0
 DEFAULT_OBJECT_WIDTH = 40.0
 pxl_width = []
 apx_distance = None
+
 """
 	Detect Objects
 """
@@ -78,8 +64,17 @@ while True:
 	# grab the frame from the threaded video stream and resize it
 	# to have a maximum width of 600 pixels
 	frame = vs.read()
-	frame = imutils.resize(frame, width=1200)
- 
+	frame = imutils.resize(frame, width=720)
+	
+	# lane_detection.py => do_canny(frame) => do_segment(canny)
+	canny = do_canny(frame)
+	segment= do_segment(canny)
+	# do some hough
+	hough = cv2.HoughLinesP(canny, 2, np.pi / 180, 100, np.array([]), minLineLength = 100, maxLineGap = 50)
+	lines = calculate_lines(frame, hough)
+	lines_visualize = visualize_lines(frame, lines)
+	cv2.imshow("Canny", canny)
+	cv2.imshow("Hough", lines_visualize)
 	# grab the frame dimensions and convert it to a blob
 	(h, w) = frame.shape[:2]
 	blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
@@ -159,7 +154,8 @@ while True:
 	status = "person: {}".format(len(person_list))
 	cv2.putText(frame, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 	# show the output frame
-	cv2.imshow("Frame", frame)
+	output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
+	cv2.imshow("Frame", output)
 	key = cv2.waitKey(1) & 0xFF
  
 	# if the `q` key was pressed, break from the loop
