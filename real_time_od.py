@@ -37,7 +37,7 @@ apx_distance = None
 	Init Curved Lane Detector
 """
 curved = CurvedLaneDetection()
-pts = np.float32([(0.4,0.65), (0.6,0.65), (0,1), (1,1)])
+pts = np.float32([(0.35,0.65), (0.65,0.65), (0,1), (1,1)])
 """
 	Detect Objects
 """
@@ -164,10 +164,9 @@ while True:
 	status = "person: {}".format(len(person_list))
 	cv2.putText(frame, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 	# show the output frame
-	# output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
 	sat = curved.saturate(frame)
 	rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-	contrast = cv2.addWeighted(rgb, 1.5, np.zeros(rgb.shape, rgb.dtype), 0, 5)
+	contrast = cv2.addWeighted(rgb, 1.5, np.zeros(rgb.shape, rgb.dtype), 0.5, 5)
 	pipe = curved.pipeline(contrast)
 	dst = curved.perspective_warp(pipe, dst_size=(w, h), src=pts)
 	out_img, curves, lanes, ploty = curved.sliding_window(dst)
@@ -196,9 +195,11 @@ print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 # gives a single float value
 print("[INFO] cpu usage percentage: {}".format(psutil.cpu_percent()))
 # gives an object with many fields
-print("[INFO] memory usage: {}".format(psutil.virtual_memory()))
-# you can convert that object to a dictionary 
-print(dict(psutil.virtual_memory()._asdict()))
+print("[INFO] total memory: {}".format(psutil.virtual_memory()[0]))
+print("[INFO] available memory: {}".format(psutil.virtual_memory()[1]))
+print("[INFO] persentage memory: {}".format(psutil.virtual_memory()[2]))
+print("[INFO] used memory: {}".format(psutil.virtual_memory()[3]))
+print("[INFO] free memory: {}".format(psutil.virtual_memory()[4]))
 
 # do a bit of cleanup
 cv2.destroyAllWindows()
