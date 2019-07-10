@@ -6,7 +6,19 @@ import imutils
 import time
 import cv2
 import sys
-from lane_detection import *
+from curved_lane_detection import CurvedLaneDetection
+import psutil
+# from lane_detection import *
+
+# construct an argument parse
+ap = argparse.ArgumentParser()
+ap.add_argument("-p", "--prototxt", required=True, help="path to Caffe 'deploy' prototxt file")
+ap.add_argument("-m", "--model", required=True, help="path to Caffe pre-train model")
+ap.add_argument("-c", "--confidence", type=float, default=0.2, help="minimum probability to filter weak detections")
+ap.add_argument("-r", "--realtimecamera", help="real time camera ")
+ap.add_argument("-v", "--video", help="path to inputed video")
+args = vars(ap.parse_args())
+
 """ 
 	Finding distance
 """
@@ -22,16 +34,13 @@ pxl_width = []
 apx_distance = None
 
 """
+	Init Curved Lane Detector
+"""
+curved = CurvedLaneDetection()
+pts = np.float32([(0.4,0.65), (0.6,0.65), (0,1), (1,1)])
+"""
 	Detect Objects
 """
-# construct an argument parse
-ap = argparse.ArgumentParser()
-ap.add_argument("-p", "--prototxt", required=True, help="path to Caffe 'deploy' prototxt file")
-ap.add_argument("-m", "--model", required=True, help="path to Caffe pre-train model")
-ap.add_argument("-c", "--confidence", type=float, default=0.2, help="minimum probability to filter weak detections")
-ap.add_argument("-r", "--realtimecamera", help="real time camera ")
-ap.add_argument("-v", "--video", help="path to inputed video")
-args = vars(ap.parse_args())
 
 # initialize the list of class labels MobileNet SSD was trained to
 # detect, then generate a set of bounding box colors for each class
@@ -66,17 +75,18 @@ while True:
 	frame = vs.read()
 	frame = imutils.resize(frame, width=720)
 	
-	# lane_detection.py => do_canny(frame) => do_segment(canny)
-	canny = do_canny(frame)
-	segment= do_segment(canny)
-	# do some hough
-	hough = cv2.HoughLinesP(canny, 2, np.pi / 180, 100, np.array([]), minLineLength = 100, maxLineGap = 50)
-	lines = calculate_lines(frame, hough)
-	lines_visualize = visualize_lines(frame, lines)
-	cv2.imshow("Canny", canny)
-	cv2.imshow("Hough", lines_visualize)
-	# grab the frame dimensions and convert it to a blob
 	(h, w) = frame.shape[:2]
+
+	# lane_detection.py => do_canny(frame) => do_segment(canny)
+	# canny = do_canny(frame)
+	# segment= do_segment(canny)
+	# # do some hough
+	# hough = cv2.HoughLinesP(canny, 2, np.pi / 180, 100, np.array([]), minLineLength = 100, maxLineGap = 50)
+	# lines = calculate_lines(frame, hough)
+	# lines_visualize = visualize_lines(frame, lines)
+	# cv2.imshow("Canny", canny)
+	# cv2.imshow("Hough", lines_visualize)
+	# grab the frame dimensions and convert it to a blob
 	blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
  
 	# pass the blob through the network and obtain the detections and
@@ -154,8 +164,22 @@ while True:
 	status = "person: {}".format(len(person_list))
 	cv2.putText(frame, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 	# show the output frame
-	output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
-	cv2.imshow("Frame", output)
+	# output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
+	sat = curved.saturate(frame)
+	rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+	contrast = cv2.addWeighted(rgb, 1.5, np.zeros(rgb.shape, rgb.dtype), 0, 5)
+	pipe = curved.pipeline(contrast)
+	dst = curved.perspective_warp(pipe, dst_size=(w, h), src=pts)
+	out_img, curves, lanes, ploty = curved.sliding_window(dst)
+	curverad = curved.get_curve(contrast, curves[0],curves[1])
+	img_ = curved.draw_lanes(frame, curves[0], curves[1], dst=pts)
+	# undistort = curved.undistort(frame)
+
+	cv2.imshow("Contrast", contrast)
+	cv2.imshow("Sliding", out_img)
+	cv2.imshow("Pipeline", dst)
+	cv2.imshow("Frame", rgb)
+	cv2.imshow("Result", img_)
 	key = cv2.waitKey(1) & 0xFF
  
 	# if the `q` key was pressed, break from the loop
@@ -169,7 +193,13 @@ while True:
 fps.stop()
 print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
- 
+# gives a single float value
+print("[INFO] cpu usage percentage: {}".format(psutil.cpu_percent()))
+# gives an object with many fields
+print("[INFO] memory usage: {}".format(psutil.virtual_memory()))
+# you can convert that object to a dictionary 
+print(dict(psutil.virtual_memory()._asdict()))
+
 # do a bit of cleanup
 cv2.destroyAllWindows()
 vs.stop()

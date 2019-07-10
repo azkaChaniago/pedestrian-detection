@@ -74,30 +74,30 @@ def visualize_lines(frame, lines):
     return lines_visualize
 
 # The video feed is read in as a VideoCapture object
-cap = cv2.VideoCapture("videos/pramuka.MP4")
-while (cap.isOpened()):
-    # ret = a boolean return value from getting the frame, frame = the current frame being projected in the video
-    ret, frame = cap.read()
-    # h, w = frame.shape[:2]
-    # frame = cv2.resize(frame, (int(w/2), int(h/2)))
-    canny = do_canny(frame)
-    cv2.imshow("canny", canny)
-    # plt.imshow(frame)
-    # plt.show()
-    segment = do_segment(canny)
-    hough = cv2.HoughLinesP(segment, 2, np.pi / 180, 100, np.array([]), minLineLength = 100, maxLineGap = 50)
-    # Averages multiple detected lines from hough into one line for left border of lane and one line for right border of lane
-    lines = calculate_lines(frame, hough)
-    # Visualizes the lines
-    lines_visualize = visualize_lines(frame, lines)
-    cv2.imshow("hough", lines_visualize)
-    # Overlays lines on frame by taking their weighted sums and adding an arbitrary scalar value of 1 as the gamma argument
-    output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
-    # Opens a new window and displays the output frame
-    cv2.imshow("output", output)
-    # Frames are read by intervals of 10 milliseconds. The programs breaks out of the while loop when the user presses the 'q' key
-    if cv2.waitKey(10) & 0xFF == ord('q'):
-        break
-# The following frees up resources and closes all windows
-cap.release()
-cv2.destroyAllWindows()
+# cap = cv2.VideoCapture("videos/pramuka.MP4")
+# while (cap.isOpened()):
+#     # ret = a boolean return value from getting the frame, frame = the current frame being projected in the video
+#     ret, frame = cap.read()
+#     # h, w = frame.shape[:2]
+#     # frame = cv2.resize(frame, (int(w/2), int(h/2)))
+#     canny = do_canny(frame)
+#     cv2.imshow("canny", canny)
+#     # plt.imshow(frame)
+#     # plt.show()
+#     segment = do_segment(canny)
+#     hough = cv2.HoughLinesP(segment, 2, np.pi / 180, 100, np.array([]), minLineLength = 100, maxLineGap = 50)
+#     # Averages multiple detected lines from hough into one line for left border of lane and one line for right border of lane
+#     lines = calculate_lines(frame, hough)
+#     # Visualizes the lines
+#     lines_visualize = visualize_lines(frame, lines)
+#     cv2.imshow("hough", lines_visualize)
+#     # Overlays lines on frame by taking their weighted sums and adding an arbitrary scalar value of 1 as the gamma argument
+#     output = cv2.addWeighted(frame, 0.9, lines_visualize, 1, 1)
+#     # Opens a new window and displays the output frame
+#     cv2.imshow("output", output)
+#     # Frames are read by intervals of 10 milliseconds. The programs breaks out of the while loop when the user presses the 'q' key
+#     if cv2.waitKey(10) & 0xFF == ord('q'):
+#         break
+# # The following frees up resources and closes all windows
+# cap.release()
+# cv2.destroyAllWindows()
