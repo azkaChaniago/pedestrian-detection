@@ -64,7 +64,6 @@ class CurvedLaneDetection:
         # Threshold x gradient
         sxbinary = np.zeros_like(scaled_sobel)
         sxbinary[(scaled_sobel >= sx_thresh[0]) & (scaled_sobel <= sx_thresh[1])] = 1
-        
         # Threshold color channel
         s_binary = np.zeros_like(s_channel)
         s_binary[(s_channel >= s_thresh[0]) & (s_channel <= s_thresh[1])] = 1
@@ -75,7 +74,7 @@ class CurvedLaneDetection:
         # cv2.imshow("sxbin", sxbinary)
         # cv2.imshow("sbin", s_binary)
         # cv2.imshow("cb", color_binary)
-        # cv2.imshow("combine", scaled_sobel)
+        # cv2.imshow("scaled_sobel", scaled_sobel)
         combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
         # print("sbinary: {}\nsxbinary: {}".format(combined_binary[(s_binary == 1) | (sxbinary == 1)], sxbinary[(scaled_sobel >= sx_thresh[0]) & (scaled_sobel <= sx_thresh[1])]))
         # cv2.imshow("Soble", combined_binary)
@@ -96,6 +95,7 @@ class CurvedLaneDetection:
         M = cv2.getPerspectiveTransform(src, dst)
         # Warp the image using OpenCV warpPerspective()
         warped = cv2.warpPerspective(img, M, dst_size)
+        cv2.imshow("warped", warped)
         return warped
 
     def inv_perspective_warp(self,
@@ -273,7 +273,6 @@ class CurvedLaneDetection:
         inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
         return inv_perspective
         
-
     def adjust_gamma(self, image, gamma=1.0):
         invGamma = 1.0 / gamma
         table = np.array([((i / 255.0) ** invGamma) * 255
@@ -283,7 +282,7 @@ class CurvedLaneDetection:
     
     def saturate(self, img):
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        greenMask = cv2.inRange(hsv, (28, 77, 100), (19, 82, 91))
-        hsv[:,:,0] = greenMask 
+        mask = cv2.inRange(hsv, (28, 77, 100), (19, 82, 91))
+        hsv[:,:,0] = mask 
         back = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
         return back

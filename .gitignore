@@ -1,6 +1,10 @@
 images/
 input.mp4
 videos/
+video/
+img/
+performance/
+flowchart/
 MobileNet-SSD/
 __ pycache__/
 __pycache__/curved_lane_detection.cpython-37.pyc
