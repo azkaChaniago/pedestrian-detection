@@ -12,3 +12,10 @@ __pycache__/curved_lane_detection.cpython-37.pyc
 rectangle.py
 vehicle_distance_detection.py
 distance.py
+
+# Virtualenv
+bin
+include
+lib
+
+__pycache__
