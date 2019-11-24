@@ -8,6 +8,7 @@ import cv2
 import sys
 from curved_lane_detection import CurvedLaneDetection
 import psutil
+import os
 # from lane_detection import *
 
 # construct an argument parse
@@ -37,7 +38,8 @@ apx_distance = None
 	Init Curved Lane Detector
 """
 curved = CurvedLaneDetection()
-pts = np.float32([(0.30,0.60), (0.65,0.60), (0,1), (1,1)])
+pts = np.float32([(0.27,0.5), (0.72,0.5), (-0.98,1), (1.2,1)])
+pts_dst = np.float32([(0,0), (1, 0), (0,1), (1,1)])
 """
 	Detect Objects
 """
@@ -97,12 +99,12 @@ while True:
 	# person_distance = []
 	sat = curved.saturate(frame)
 	rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-	contrast = cv2.addWeighted(rgb, 1.5, np.zeros(rgb.shape, rgb.dtype), 0.5, 5)
-	pipe = curved.pipeline(contrast)
-	dst = curved.perspective_warp(pipe, dst_size=(w, h), src=pts)
-	out_img, curves, lanes, ploty = curved.sliding_window(dst)
-	curverad = curved.get_curve(contrast, curves[0],curves[1])
-	img_ = curved.draw_lanes(frame, curves[0], curves[1], dst=pts)
+	# contrast = cv2.addWeighted(rgb, 1.5, np.zeros(rgb.shape, rgb.dtype), 0.5, 5)
+	# pipe = curved.pipeline(contrast)
+	# dst = curved.perspective_warp(pipe, dst_size=(w, h), src=pts, dst=pts_dst)
+	# out_img, curves, lanes, ploty = curved.sliding_window(dst)
+	# curverad = curved.get_curve(contrast, curves[0],curves[1])
+	# img_ = curved.draw_lanes(frame, curves[0], curves[1], dst=pts)
     # loop over the detections
 	for i in np.arange(0, detections.shape[2]):
 		# extract the confidence (i.e., probability) associated with
@@ -124,7 +126,7 @@ while True:
 			focalLength = (pxl_width[0] * DEFAULT_DISTANCE) / DEFAULT_OBJECT_WIDTH
 			# draw the prediction on the frame
 			label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
-			if CLASSES[idx] == "person":
+			if CLASSES[idx] in ("person", "car"):
 				rects.append(box.astype("int"))
 				person = "{}".format(CLASSES[idx])
 				person_list.append(person)
@@ -141,8 +143,7 @@ while True:
 
 				# [(0.30,0.60), (0.65,0.60), (0,1), (1,1)]
 					
-				if apx_distance <= (h * pts[0][1]):
-					print('blah')
+				if apx_distance <= (h * (1 - pts[0][1])):
 					if (startX >= (w * pts[0][0]) and endX <= (w * pts[1][0])) or (startY >= (h * pts[0][1]) and endY <= (h * pts[1][1])):
 						color = (0, 0, 255)  
 					else:
@@ -158,14 +159,14 @@ while True:
 				# elif apx_distance <= 8:
 				# 	color = (50, 255, 255)
 
-				cv2.putText(img_, '{}m'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+				cv2.putText(rgb, '{}m'.format(apx_distance), (int(mid_x),int(mid_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 					
 			if len(person_list) == 0:
 				counted_person ="{}:".format("person")
 			else:
 				if apx_distance <= (h * pts[0][1]):
-					print('blah')
-					if (startX >= (w * pts[0][0]) and endX <= (w * pts[1][0])) and (startY >= (h * pts[0][1]) and endY <= (h * pts[1][1])):
+					if (startX >= (w * pts[0][0]) and endX <= (w * pts[1][0])) or (startY >= (h * pts[0][1]) and endY <= (h * pts[1][1])):
+						os.system('play -nq -t alsa synth 0.1 sine 700')
 						color = (0, 0, 255)  
 				else:
 					color = (0, 255, 0)
@@ -176,22 +177,22 @@ while True:
 				# elif apx_distance <= 8:
 				# 	color = (50, 255, 255)
 				
-				counted_person ="{}: {}".format("person", len(person_list))
-				cv2.rectangle(img_, (startX, startY), (endX, endY), color, 2)
+				# counted_person ="{}: {}".format("person", len(person_list))
+				cv2.rectangle(rgb, (startX, startY), (endX, endY), color, 2)
 				y = startY - 15 if startY - 15 > 15 else startY + 15
-				cv2.putText(img_, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+				cv2.putText(rgb, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 			
 	status = "person: {}".format(len(person_list))
-	cv2.putText(img_, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+	cv2.putText(rgb, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 	# show the output frame
 	
-	# undistort = curved.undistort(frame)
+	# q = curved.undistort(frame)
 
-	# cv2.imshow("Contrast", contrast)
-	cv2.imshow("Sliding", out_img)
-	# cv2.imshow("Pipeline", dst)
+	# cv2.imshow("rgb", rgb)
+	# cv2.imshow("Sliding", out_img)
+	# cv2.imshow("Pipeline", rgb)
 	# cv2.imshow("Frame", rgb)
-	cv2.imshow("Result", img_)
+	cv2.imshow("Result", rgb)
 	key = cv2.waitKey(1) & 0xFF
  
 	# if the `q` key was pressed, break from the loop
