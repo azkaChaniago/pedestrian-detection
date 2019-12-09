@@ -49,7 +49,7 @@ class CurvedLaneDetection:
         dst = cv2.undistort(img, mtx, dist, None, mtx)
         return dst
 
-    def pipeline(self, img, s_thresh=(100, 255), sx_thresh=(15, 255)):
+    def pipeline(self, img, s_thresh=(50, 255), sx_thresh=(15, 255)):
         img = self.undistort(img)
         img = np.copy(img)
         # Convert to HLS color space and separate the V channel
@@ -75,9 +75,8 @@ class CurvedLaneDetection:
         # cv2.imshow("sbin", s_binary)
         # cv2.imshow("cb", color_binary)
         # cv2.imshow("scaled_sobel", scaled_sobel)
-        combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
+        combined_binary[(s_binary == 1) | (scaled_sobel == 1)] = 1
         # print("sbinary: {}\nsxbinary: {}".format(combined_binary[(s_binary == 1) | (sxbinary == 1)], sxbinary[(scaled_sobel >= sx_thresh[0]) & (scaled_sobel <= sx_thresh[1])]))
-        # cv2.imshow("Soble", combined_binary)
         return scaled_sobel
 
     def perspective_warp(self,
@@ -265,7 +264,6 @@ class CurvedLaneDetection:
         left = np.array([np.transpose(np.vstack([left_fit, ploty]))])
         right = np.array([np.flipud(np.transpose(np.vstack([right_fit, ploty])))])
         points = np.hstack((left, right))
-        
         cv2.fillPoly(color_img, np.int_(points), (0,200,255))
 
         height, width = img.shape[:2]

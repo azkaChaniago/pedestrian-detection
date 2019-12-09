@@ -61,7 +61,7 @@ net = cv2.dnn.readNetFromCaffe(args["prototxt"], args['model'])
 print("[INFO] starting video stream")
 if args['realtimecamera'] or args['video']:
 	if (args['realtimecamera']):
-		vs = VideoStream(src=0).start()
+		vs = VideoStream(src=1).start()
 	elif (args['video']):
 		vs = FileVideoStream(args['video']).start()
 else:
@@ -182,8 +182,8 @@ while True:
 				y = startY - 15 if startY - 15 > 15 else startY + 15
 				cv2.putText(rgb, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 			
-	# status = "person: {}".format(len(person_list))
-	# cv2.putText(rgb, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+	status = "person: {}".format(len(person_list))
+	cv2.putText(rgb, status, (10, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 	# show the output frame
 	
 	# q = curved.undistort(frame)
